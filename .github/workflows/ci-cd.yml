@@ -1,95 +1,61 @@
-name: MERN CI/CD
+name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  backend:
+  test:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: server
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js v22
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: server/package-lock.json
+          node-size: 22
 
-      - name: Install dependencies
+      # Test Frontend
+      - name: Test Frontend
         run: |
-          rm -rf node_modules
-          npm install
+          cd frontend
+          npm ci
+          npm run test:run
 
-      - name: Run Tests
-        run: npm test
-
-      - name: Build Project
-        run: npm run build
-
-  frontend:
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: frontend
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Clean Install Dependencies
+      # Test Backend
+      - name: Test Backend
         run: |
-          rm -rf node_modules package-lock.json
-          npm cache clean --force
-          npm install --legacy-peer-deps --include=optional
+          cd server
+          npm ci
+          npm run test
 
-      - name: Run Tests
-        run: npm run test:run
-
-      - name: Build Project
-        run: npm run build
-
-  docker:
-    needs: [backend, frontend]
-
+  build-and-push:
+    needs: test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Login to Docker Hub
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets::DOCKER_USERNAME }}
+          password: ${{ secrets::DOCKER_PASSWORD}}
 
-      - name: Build Backend Image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/mern-backend:latest ./server
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build Frontend Image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/mern-frontend:latest ./frontend
+      # Build & Push Backend
+      - name: Build and Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          push: true
+          tags: ${{ secrets.DOCKER_PASSWORD }}/mern-backend:latest
 
-      - name: Push Backend Image
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/mern-backend:latest
-
-      - name: Push Frontend Image
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/mern-frontend:latest
+      # Build & Push Frontend
+      - name: Build and Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ secrets.DOCKER_PASSWORD }}/mern-frontend:latest
