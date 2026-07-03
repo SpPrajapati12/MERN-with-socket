@@ -20,7 +20,7 @@ describe("POST /api/auth/register", () => {
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.user.email).toBe(testUser.email);
-    expect(res.body.user.isVerified).toBe(true);
+    expect(res.body.user.isVerified).toBe(false);
   });
 
   it("should reject duplicate email", async () => {
