@@ -1,6 +1,7 @@
 version: "3.9"
 
 services:
+
   backend:
     build:
       context: ./server
@@ -14,6 +15,9 @@ services:
   frontend:
     build:
       context: ./frontend
+      # Pass the production API path to the Dockerfile builder stage
+      args:
+        - VITE_API_URL=/api
     container_name: mern_frontend
     restart: always
     depends_on:
