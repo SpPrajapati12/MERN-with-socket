@@ -1,14 +1,23 @@
-# Step 1: Build stage
+# Build Stage
 FROM node:22-alpine AS builder
+
 WORKDIR /app
+
 COPY package*.json ./
-RUN npm ci
+RUN npm install
+
 COPY . .
 RUN npm run build
 
-# Step 2: Production stage
+# Production Stage
 FROM nginx:alpine
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built frontend assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
-# If using React Router, copy a custom nginx config to handle SPA routing if necessary
+
 EXPOSE 80
+
 CMD ["nginx", "-g", "daemon off;"]
