@@ -23,6 +23,8 @@ export default function Register() {
   const { toast } = useToast();
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
 
+  console.log(errors);
+
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
