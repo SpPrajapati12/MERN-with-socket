@@ -45,7 +45,6 @@ export default function UserFormDialog({ open, onOpenChange, user, onSuccess }: 
   }, [open, user]);
 
   const onSubmit = async (data: any) => {
-    console.log("Submitting form data:", data);
     setLoading(true);
     try {
       if (isEdit) await updateUser(user._id, data);

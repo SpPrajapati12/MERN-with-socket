@@ -377,6 +377,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
 
 // FORGOT PASSWORD
 export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+  console.log("Forgot password called for email:", req.body.email);
   try {
     const user = await User.findOne({ email: req.body.email });
 
@@ -405,6 +406,7 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
 
 // RESET PASSWORD
 export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  console.log("Reset password called with token:", req.params.token);
   try {
     const user = await User.findOne({
       resetPasswordToken: req.params.token,

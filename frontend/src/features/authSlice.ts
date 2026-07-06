@@ -35,24 +35,13 @@ const authSlice = createSlice({
       state.refreshToken = action.payload.refreshToken;
       state.loading = false;
       state.error = null;
-      localStorage.setItem(
-        "auth",
-        JSON.stringify({
-          user: action.payload.user,
-          accessToken: action.payload.accessToken,
-          refreshToken: action.payload.refreshToken,
-        })
-      );
+      localStorage.setItem("auth", JSON.stringify(action.payload));
     },
     logout: (state) => {
       state.user = null;
       state.accessToken = null;
-      state.refreshToken = null; // ✅ ADD THIS
-      state.loading = false;
-      state.error = null;
-
       localStorage.removeItem("auth");
-    }
+    },
   },
 });
 
