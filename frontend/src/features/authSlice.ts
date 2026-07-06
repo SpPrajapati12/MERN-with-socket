@@ -4,6 +4,7 @@ import type { User } from "@/types";
 interface AuthState {
   user: User | null;
   accessToken: string | null;
+  refreshToken: string | null;
   loading: boolean;
   error: string | null;
 }
@@ -13,6 +14,7 @@ const persisted = JSON.parse(localStorage.getItem("auth") || "null");
 const initialState: AuthState = {
   user: persisted?.user || null,
   accessToken: persisted?.accessToken || null,
+  refreshToken: persisted?.refreshToken || null,
   loading: false,
   error: null,
 };
@@ -30,6 +32,7 @@ const authSlice = createSlice({
     setCredentials: (state, action: PayloadAction<{ user: User; accessToken: string; refreshToken: string }>) => {
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken;
+      state.refreshToken = action.payload.refreshToken;
       state.loading = false;
       state.error = null;
       localStorage.setItem("auth", JSON.stringify(action.payload));

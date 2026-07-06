@@ -1,6 +1,7 @@
 import { Router } from "express";
 import * as c from "../controllers/userController";
 import { authenticate, authorize } from "../middleware/auth";
+import { createUser } from "../controllers/authController";
 
 const router = Router();
 
@@ -35,6 +36,13 @@ const router = Router();
  *       200: { description: List of users }
  */
 router.get("/", authenticate, authorize("admin"), c.getUsers);
+
+router.post(
+  "/createuser",
+  authenticate,
+  authorize("admin"),
+  createUser
+);
 
 /**
  * @swagger

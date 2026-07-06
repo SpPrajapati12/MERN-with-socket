@@ -151,14 +151,61 @@ import {
   sendVerificationEmail,
   sendResetPasswordEmail,
 } from "../utils/emailService";
+import { OAuth2Client } from "google-auth-library";
 
-// REGISTER
-export const register = async (req: Request, res: Response, next: NextFunction) => {
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// // REGISTER
+// export const register = async (req: Request, res: Response, next: NextFunction) => {
+//   try {
+//     const { name, email, password } = req.body;
+
+//     if (await User.findOne({ email }))
+//       throw new AppError("Email already registered", 409);
+
+//     const verificationToken = generateRandomToken();
+
+//     const user = await User.create({
+//       name,
+//       email,
+//       password,
+//       verificationToken,
+//       isVerified: false,
+//     });
+
+//     // ✅ FIX: Skip email in test environment
+//     if (process.env.NODE_ENV !== "test") {
+//       await sendVerificationEmail(email, verificationToken);
+//     }
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Registration successful.",
+//       user,
+//     });
+//   } catch (err) {
+//     next(err);
+//   }
+// };
+
+export const register = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { name, email, password } = req.body;
 
-    if (await User.findOne({ email }))
+    // Required validation
+    if (!name || !email || !password) {
+      throw new AppError("Name, email and password are required", 400);
+    }
+
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
       throw new AppError("Email already registered", 409);
+    }
 
     const verificationToken = generateRandomToken();
 
@@ -166,11 +213,11 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       name,
       email,
       password,
+      provider: "local", // <-- Important
       verificationToken,
       isVerified: false,
     });
 
-    // ✅ FIX: Skip email in test environment
     if (process.env.NODE_ENV !== "test") {
       await sendVerificationEmail(email, verificationToken);
     }
@@ -179,6 +226,83 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       success: true,
       message: "Registration successful.",
       user,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const googleLogin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      throw new AppError("Google credential is required", 400);
+    }
+
+    // Verify Google ID Token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload) {
+      throw new AppError("Invalid Google token", 401);
+    }
+
+    const {
+      sub,
+      email,
+      name,
+      picture,
+      email_verified,
+    } = payload;
+
+    if (!email) {
+      throw new AppError("Google account has no email", 400);
+    }
+
+    let user = await User.findOne({ email });
+
+    // Existing user
+    if (user) {
+      // Link Google account if not already linked
+      if (!user.googleId) {
+        user.googleId = sub;
+        user.provider = "google";
+        user.avatar = picture;
+        user.isVerified = true;
+
+        await user.save();
+      }
+    } else {
+      // Create new Google user
+      user = await User.create({
+        name,
+        email,
+        googleId: sub,
+        avatar: picture,
+        provider: "google",
+        isVerified: email_verified ?? true,
+      });
+    }
+
+    // Generate JWT using your existing methods
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+
+    res.status(200).json({
+      success: true,
+      message: "Google login successful",
+      user,
+      accessToken,
+      refreshToken,
     });
   } catch (err) {
     next(err);
@@ -253,6 +377,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
 
 // FORGOT PASSWORD
 export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+  console.log("Forgot password called for email:", req.body.email);
   try {
     const user = await User.findOne({ email: req.body.email });
 
@@ -281,6 +406,7 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
 
 // RESET PASSWORD
 export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  console.log("Reset password called with token:", req.params.token);
   try {
     const user = await User.findOne({
       resetPasswordToken: req.params.token,
@@ -322,6 +448,51 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     res.json({
       success: true,
       message: "Password changed successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+export const createUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      role = "user",
+    } = req.body;
+
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      throw new AppError("Email already exists", 409);
+    }
+
+    const verificationToken = generateRandomToken();
+
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      isVerified: false,
+      verificationToken,
+    });
+
+    if (process.env.NODE_ENV !== "test") {
+      await sendVerificationEmail(email, verificationToken);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully.",
+      user,
     });
   } catch (err) {
     next(err);

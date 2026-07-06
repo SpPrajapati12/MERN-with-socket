@@ -8,6 +8,7 @@ import {
   resetPasswordRules,
   handleValidation,
 } from "../middleware/validate";
+import { googleLogin } from "../controllers/authController";
 
 const router = Router();
 
@@ -39,6 +40,11 @@ const router = Router();
  *       201: { description: Registration successful }
  */
 router.post("/register", registerRules, handleValidation, c.register);
+
+
+router.post("/google", googleLogin);
+
+
 
 /**
  * @swagger

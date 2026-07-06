@@ -8,8 +8,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import FormField from "@/components/FormField";
 import { useToast } from "@/components/ui/toast";
-import { login } from "@/services/authService";
+import { googleLogin, login } from "@/services/authService";
 import { useEffect } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 
 const schema = z.object({
   email: z.string().email("Valid email required"),
@@ -39,6 +40,44 @@ export default function Login() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      if (!credentialResponse.credential) return;
+
+      dispatch(setLoading(true));
+
+      const res = await googleLogin(credentialResponse.credential);
+
+      console.log("Google login response:", res); // Log the response for debugging
+
+      const data = {
+        user: res.user,
+        accessToken: res.accessToken,
+        refreshToken: res.refreshToken,
+      };
+
+      // This is the important line
+      dispatch(setCredentials(data));
+
+      toast({
+        title: "Success",
+        description: "Logged in with Google",
+      });
+
+      navigate("/dashboard");
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Google login failed";
+
+      dispatch(setError(msg));
+
+      toast({
+        title: "Error",
+        description: msg,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -54,6 +93,16 @@ export default function Login() {
             <Link to="/forgot-password" className="text-[hsl(var(--primary))] hover:underline block">Forgot password?</Link>
             <span>Don't have an account? <Link to="/register" className="text-[hsl(var(--primary))] hover:underline">Register</Link></span>
           </div>
+          <div className="my-4 text-center">
+            OR
+          </div>
+
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => {
+              console.log("Google Login Failed");
+            }}
+          />
         </form>
       </CardContent>
     </Card>

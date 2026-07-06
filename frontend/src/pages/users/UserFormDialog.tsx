@@ -5,15 +5,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import FormField from "@/components/FormField";
 import { useToast } from "@/components/ui/toast";
-import { updateUser } from "@/services/userService";
-import { register as registerApi } from "@/services/authService";
+import { createuser, updateUser } from "@/services/userService";
 import { useState, useEffect } from "react";
 import type { User } from "@/types";
+import SelectField from "@/components/SelectField";
 
 const baseSchema = z.object({
   name: z.string().min(1, "Required"),
   email: z.string().email("Valid email required"),
   password: z.string().optional(),
+  role: z.enum(["user", "admin"] as const),
 });
 
 const createSchema = baseSchema.extend({
@@ -40,14 +41,15 @@ export default function UserFormDialog({ open, onOpenChange, user, onSuccess }: 
   });
 
   useEffect(() => {
-    if (open) reset(isEdit ? { name: user.name, email: user.email } : { name: "", email: "", password: "" });
+    if (open) reset(isEdit ? { name: user.name, email: user.email, role: user.role } : { name: "", email: "", password: "", role: "user" });
   }, [open, user]);
 
   const onSubmit = async (data: any) => {
+    console.log("Submitting form data:", data);
     setLoading(true);
     try {
       if (isEdit) await updateUser(user._id, data);
-      else await registerApi(data);
+      else await createuser(data);
       toast({ title: "Success", description: isEdit ? "User updated" : "User created" });
       onOpenChange(false);
       onSuccess();
@@ -66,6 +68,16 @@ export default function UserFormDialog({ open, onOpenChange, user, onSuccess }: 
           <FormField label="Name" register={register("name")} error={errors.name?.message as string} />
           <FormField label="Email" type="email" register={register("email")} error={errors.email?.message as string} />
           {!isEdit && <FormField label="Password" type="password" register={register("password")} error={errors.password?.message as string} />}
+          <SelectField
+            label="Role"
+            register={register("role")}
+            error={errors.role?.message}
+            defaultValue="user"
+            options={[
+              { label: "User", value: "user" },
+              { label: "Admin", value: "admin" },
+            ]}
+          />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save"}</Button>
